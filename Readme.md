@@ -1,6 +1,6 @@
-# Inventory System
+# Learning Management System
 
-This is a Laravel-based inventory management system running in a Dockerized environment with laravel version is laravel 10 php 8.2 and database mysql.
+This is a Laravel-based learning management system running in a Dockerized environment with laravel version is laravel 10 php 8.2 and database mysql.
 
 ---
 
