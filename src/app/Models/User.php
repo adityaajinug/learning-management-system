@@ -12,15 +12,16 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    const ROLE_TEACHER = 1;
+    const ROLE_STUDENT = 2;
+
     /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
+        'firstname', 'lastname', 'email', 'password', 'username', 'roles'
     ];
 
     /**
@@ -30,7 +31,6 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
-        'remember_token',
     ];
 
     /**
@@ -39,7 +39,42 @@ class User extends Authenticatable
      * @var array<string, string>
      */
     protected $casts = [
-        'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function isTeacher(): bool
+    {
+        return $this->roles === self::ROLE_TEACHER;
+    }
+
+    public function isStudent(): bool
+    {
+        return $this->roles === self::ROLE_STUDENT;
+    }
+
+
+    public function coursesTaught()
+    {
+        return $this->hasMany(Course::class, 'teacher_id');
+    }
+
+    public function courseMemberships()
+    {
+        return $this->hasMany(CourseMember::class, 'student_id');
+    }
+
+    public function completionTrackings()
+    {
+        return $this->hasMany(CourseCompletionTracking::class, 'student_id');
+    }
+
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    public function getJWTCustomClaims()
+    {
+        return [];
+    }
 }
