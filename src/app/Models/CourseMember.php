@@ -27,4 +27,9 @@ class CourseMember extends Model
     {
         return $this->hasMany(CourseComment::class, 'member_id');
     }
+
+    public function completionTracking()
+    {
+        return $this->hasMany(CourseCompletionTracking::class, 'member_id');
+    }
 }

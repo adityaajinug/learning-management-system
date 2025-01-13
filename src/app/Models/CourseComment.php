@@ -13,9 +13,9 @@ class CourseComment extends Model
         'comment', 'visible', 'content_id', 'member_id'
     ];
 
-    public function courseContentFull()
+    public function courseContent()
     {
-        return $this->belongsTo(CourseContentFull::class, 'content_id');
+        return $this->belongsTo(CourseContent::class, 'content_id');
     }
 
     public function member()

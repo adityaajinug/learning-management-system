@@ -13,16 +13,16 @@ return new class extends Migration
     {
         Schema::create('courses', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->text('description');
-            $table->decimal('price', 8, 2);
-            $table->string('image');
-            $table->string('url');
-            $table->integer('quota');
+            $table->string('name')->nullable();
+            $table->text('description')->nullable();
+            $table->decimal('price', 8, 2)->nullable();
+            $table->string('image')->nullable();
+            $table->string('url')->nullable();
+            $table->integer('quota')->nullable();
             $table->unsignedBigInteger('teacher_id');
             $table->timestamps();
 
-            $table->foreign('teacher_id')->references('id')->on('users')->onDelete('restrict');
+            $table->foreign('teacher_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

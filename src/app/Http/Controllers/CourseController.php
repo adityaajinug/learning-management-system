@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use Illuminate\Http\Request;
 use Exception;
+use Illuminate\Support\Str;
 
 class CourseController extends Controller
 {
@@ -39,43 +40,49 @@ class CourseController extends Controller
 
     public function store(Request $request)
     {
-        try {
-            $validatedData = $request->validate([
-                'name' => 'required|string|max:255',
-                'description' => 'nullable|string',
-                'price' => 'required|numeric',
-                'image' => 'nullable|string',
-                'url' => 'nullable|string',
-                'quota' => 'required|integer',
-                'teacher_id' => 'required|exists:users,id',
-            ]);
 
-            $user = auth()->user();
-            if (!$user || !$user->isTeacher()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Only teachers can create courses.',
-                    'code' => 403,
-                    'data' => null
-                ], 403);
-            }
+        $user = auth()->user();
 
-            $course = Course::create($validatedData);
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Course created successfully',
-                'code' => 200,
-                'data' => $course
-            ], 200);
-        } catch (Exception $e) {
+        if (!$user->isTeacher()) {
             return response()->json([
                 'status' => false,
-                'message' => 'Server error: ' . $e->getMessage(),
-                'code' => 500,
-                'data' => null
-            ], 500);
+                'message' => 'Only teachers can create courses.',
+                'code' => 403,
+                'data' => null,
+            ], 403);
         }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'price' => 'required|numeric',
+            'quota' => 'required|integer',
+            'image' => 'required|image|max:2048', 
+        ]);
+
+       
+        $imagePath = $request->file('image')->store('images/courses', 'public');
+
+  
+        $slug = Str::slug($validated['name']);
+
+
+        $course = Course::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'price' => $validated['price'],
+            'quota' => $validated['quota'],
+            'teacher_id' => $user->id,
+            'image' =>  $imagePath,
+            'url' => $slug,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Course created successfully.',
+            'code' => 200,
+            'data' => $course,
+        ], 200);
     }
 
     public function show($id)

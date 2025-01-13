@@ -45,12 +45,12 @@ class User extends Authenticatable implements JWTSubject
 
     public function isTeacher(): bool
     {
-        return $this->roles === self::ROLE_TEACHER;
+        return (string) $this->roles === (string) self::ROLE_TEACHER;
     }
 
     public function isStudent(): bool
     {
-        return $this->roles === self::ROLE_STUDENT;
+        return (string) $this->roles === (string) self::ROLE_STUDENT;
     }
 
 
