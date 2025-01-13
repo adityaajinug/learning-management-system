@@ -88,7 +88,7 @@ class CourseController extends Controller
     public function show($id)
     {
         try {
-            $course = Course::with(['teacher', 'courseContentMinis', 'members', 'completionTrackings'])->find($id);
+            $course = Course::with(['teacher', 'courseContent', 'members', 'completionTrackings'])->find($id);
 
             if (!$course) {
                 return response()->json([

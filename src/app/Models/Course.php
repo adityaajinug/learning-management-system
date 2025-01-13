@@ -18,9 +18,9 @@ class Course extends Model
         return $this->belongsTo(User::class, 'teacher_id');
     }
 
-    public function courseContentMinis()
+    public function courseContent()
     {
-        return $this->hasMany(CourseContentMini::class, 'course_id');
+        return $this->hasMany(CourseContent::class, 'course_id');
     }
 
     public function members()
