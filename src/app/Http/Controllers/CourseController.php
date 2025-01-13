@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
+use App\Models\CourseMember;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Exception;
 use Illuminate\Support\Str;
@@ -12,8 +14,23 @@ class CourseController extends Controller
     public function index()
     {
         try {
+            $loggedInUser = auth()->user();
+    
+            if (!$loggedInUser->isTeacher()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized: Only teachers can access this data',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+    
             $baseUrl = url('/');
-            $courses = Course::with('teacher')->get();
+    
+            $courses = Course::with('teacher')
+                ->where('teacher_id', $loggedInUser->id)
+                ->get();
+    
             $courses->map(function ($course) use ($baseUrl) {
                 $course->url = $baseUrl . '/courses/' . $course->url;
     
@@ -21,7 +38,7 @@ class CourseController extends Controller
     
                 return $course;
             });
-
+    
             return response()->json([
                 'status' => true,
                 'message' => 'Courses fetched successfully',
@@ -37,6 +54,7 @@ class CourseController extends Controller
             ], 500);
         }
     }
+    
 
     public function store(Request $request)
     {
@@ -183,6 +201,88 @@ class CourseController extends Controller
                 'message' => 'Server error: ' . $e->getMessage(),
                 'code' => 500,
                 'data' => null
+            ], 500);
+        }
+    }
+
+    public function enroll(Request $request, $courseId)
+    {
+        try {
+            $course = Course::findOrFail($courseId); 
+            $studentIds = $request->input('student_ids', []); 
+
+     
+            if (empty($studentIds) || !is_array($studentIds)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Student IDs are required and must be an array',
+                    'data' => null
+                ], 400);
+            }
+
+            $students = User::whereIn('id', $studentIds)
+            ->where('roles', User::ROLE_STUDENT)
+            ->get();
+
+            $students = User::whereIn('id', $studentIds)->where('roles', User::ROLE_STUDENT)->get();
+            
+            if ($students->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No valid students found',
+                    'data' => null
+                ], 400);
+            }
+
+            $enrolledStudents = [];
+            $skippedStudents = [];
+
+            foreach ($students as $student) {
+                $alreadyEnrolled = CourseMember::where('student_id', $student->id)
+                    ->where('course_id', $course->id)
+                    ->exists();
+    
+                if (!$alreadyEnrolled) {
+                    CourseMember::create([
+                        'student_id' => $student->id,
+                        'course_id' => $course->id
+                    ]);
+    
+                    $enrolledStudents[] = [
+                        'id' => $student->id,
+                        'firstname' => $student->firstname,
+                        'lastname' => $student->lastname,
+                        'email' => $student->email,
+                        'course_id' => $course->id
+                    ];
+                } else {
+                    $skippedStudents[] = [
+                        'id' => $student->id,
+                        'firstname' => $student->firstname,
+                        'lastname' => $student->lastname,
+                        'email' => $student->email,
+                        'course_id' => $course->id,
+                        'message' => 'Student already enrolled in this course'
+                    ];
+                }
+            }
+    
+            return response()->json([
+                'status' => true,
+                'message' => 'Enrollment process completed',
+                'data' => [
+                    'enrolled' => $enrolledStudents,
+                    'skipped' => $skippedStudents
+                ],
+                'code' => 200
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Enrollment failed: ' . $e->getMessage(),
+                'data' => null,
+                'code' => 500
             ], 500);
         }
     }

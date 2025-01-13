@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CourseContentController;
 use App\Http\Controllers\CourseController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -42,5 +43,10 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('{id}', 'show'); 
         Route::put('{course}', 'update'); 
         Route::delete('{course}', 'destroy');
+        Route::post('{id}/enroll', 'enroll');
+    });
+
+    Route::controller(CourseContentController::class)->prefix('courses/{course}/content')->group(function () {
+        Route::post('/', 'store');
     });
 });
