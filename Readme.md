@@ -80,5 +80,5 @@ http://localhost:8080
 ### Access the API documentation and run in postman
 
 ```url
-test
+https://documenter.getpostman.com/view/16112273/2sAYQWKtpf
 ```
