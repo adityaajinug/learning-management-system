@@ -11,7 +11,15 @@ class CourseController extends Controller
     public function index()
     {
         try {
+            $baseUrl = url('/');
             $courses = Course::with('teacher')->get();
+            $courses->map(function ($course) use ($baseUrl) {
+                $course->url = $baseUrl . '/courses/' . $course->url;
+    
+                $course->teacher->makeHidden(['roles', 'created_at', 'updated_at']);
+    
+                return $course;
+            });
 
             return response()->json([
                 'status' => true,
