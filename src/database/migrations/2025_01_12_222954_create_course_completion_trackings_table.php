@@ -13,14 +13,14 @@ return new class extends Migration
     {
         Schema::create('course_completion_trackings', function (Blueprint $table) {
             $table->id();
-            $table->integer('status');
-            $table->text('description');
-            $table->unsignedBigInteger('course_id');
-            $table->unsignedBigInteger('student_id');
+            $table->integer('status')->nullable();
+            $table->text('description')->nullable();
+            $table->unsignedBigInteger('course_content_id');
+            $table->unsignedBigInteger('member_id');
             $table->timestamps();
 
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('restrict');
-            $table->foreign('student_id')->references('id')->on('users')->onDelete('restrict');
+            $table->foreign('member_id')->references('id')->on('course_members')->onDelete('cascade');
+            $table->foreign('course_content_id')->references('id')->on('course_contents')->onDelete('cascade');
         });
     }
 
