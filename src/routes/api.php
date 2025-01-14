@@ -49,6 +49,12 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('comments/count', 'countCommentsByTeacher');
     });
 
+    Route::controller(CourseController::class)->prefix('student')->group(function () {
+        Route::get('my-courses', 'getCoursesByStudent'); 
+        Route::get('courses/count', 'countCoursesByStudent');
+        Route::get('comments/count', 'countCommentsByStudent');
+    });
+
     Route::controller(CourseContentController::class)->prefix('courses/{course}/content')->group(function () {
         Route::post('/', 'store');
         Route::get('{content}', 'show'); 

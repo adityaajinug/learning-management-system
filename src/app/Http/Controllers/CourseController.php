@@ -7,6 +7,7 @@ use App\Models\CourseMember;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Exception;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CourseController extends Controller
@@ -452,5 +453,156 @@ class CourseController extends Controller
             ], 500);
         }
     }
+
+    public function getCoursesByStudent()
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            // Cek apakah yang login adalah student
+            if (!$loggedInUser->isStudent()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized: Only students can access this data',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+
+            $courses = DB::table('courses')
+                ->join('course_members', 'courses.id', '=', 'course_members.course_id')
+                ->where('course_members.student_id', $loggedInUser->id)
+                ->select('courses.*')
+                ->get();
+
+            foreach ($courses as $course) {
+                $course->courseContent = DB::table('course_contents')
+                    ->where('course_id', $course->id)
+                    ->where('release_start', '<=', now()) 
+                    ->where('release_end', '>=', now()) 
+                    ->get();
+
+                $course->teacher = DB::table('users')
+                    ->where('id', $course->teacher_id)
+                    ->select('id', 'firstname', 'lastname', 'email') 
+                    ->first();
+                
+            
+                $course->members = DB::table('course_members')
+                    ->join('users', 'course_members.student_id', '=', 'users.id')
+                    ->where('course_members.course_id', $course->id)
+                    ->where('course_members.student_id', $loggedInUser->id)
+                    ->select('users.id', 'users.firstname', 'users.lastname', 'users.email')
+                    ->get();
+            }
+
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Courses fetched successfully',
+                'code' => 200,
+                'data' => $courses
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'code' => 500,
+                'data' => null
+            ], 500);
+        }
+    }
+
+    public function countCoursesByStudent()
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            if (!$loggedInUser->isStudent()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized: Only students can access this data',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+
+            $courseCount = DB::table('courses')
+                ->join('course_members', 'courses.id', '=', 'course_members.course_id')
+                ->where('course_members.student_id', $loggedInUser->id)
+                ->count();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Course count fetched successfully',
+                'code' => 200,
+                'data' => ['count' => $courseCount]
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'code' => 500,
+                'data' => null
+            ], 500);
+        }
+    }
+
+    public function countCommentsByStudent()
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            if (!$loggedInUser->isStudent()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized: Only students can access this data',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+
+            $courses = DB::table('courses')
+                ->join('course_members', 'courses.id', '=', 'course_members.course_id')
+                ->where('course_members.student_id', $loggedInUser->id)
+                ->select('courses.id as course_id', 'courses.name as course_name')
+                ->get();
+
+       
+            $coursesWithCommentCount = $courses->map(function ($course) use ($loggedInUser) {
+
+                $courseContentsWithCommentCount = DB::table('course_contents')
+                    ->leftJoin('course_comments', 'course_contents.id', '=', 'course_comments.content_id')
+                    ->leftJoin('course_members', 'course_comments.member_id', '=', 'course_members.id')
+                    ->where('course_contents.course_id', $course->course_id)
+                    ->where('course_members.student_id', $loggedInUser->id)
+                    ->select('course_contents.id as content_id', 'course_contents.name as content_name', DB::raw('COUNT(course_comments.id) as comment_count'))
+                    ->groupBy('course_contents.id')
+                    ->get();
+
+                return [
+                    'course_id' => $course->course_id,
+                    'course_name' => $course->course_name,
+                    'content' => $courseContentsWithCommentCount,
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Student comment counts fetched successfully',
+                'code' => 200,
+                'data' => $coursesWithCommentCount
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'code' => 500,
+                'data' => null
+            ], 500);
+        }
+    }
+
+
 
 }
