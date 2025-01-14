@@ -40,6 +40,7 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::controller(CourseController::class)->prefix('courses')->group(function () {
         Route::get('/my-course', 'index'); 
         Route::post('/store', 'store'); 
+        Route::get('/total', 'total'); 
         Route::get('{id}', 'show'); 
         Route::put('{course}', 'update'); 
         Route::delete('{course}', 'destroy');
@@ -48,5 +49,6 @@ Route::middleware(['jwt.auth'])->group(function () {
 
     Route::controller(CourseContentController::class)->prefix('courses/{course}/content')->group(function () {
         Route::post('/', 'store');
+        Route::get('{content}', 'show'); 
     });
 });

@@ -106,7 +106,7 @@ class CourseController extends Controller
     public function show($id)
     {
         try {
-            $course = Course::with(['teacher', 'courseContent', 'members', 'completionTrackings'])->find($id);
+            $course = Course::with(['teacher', 'courseContent', 'members.student'])->find($id);
 
             if (!$course) {
                 return response()->json([
@@ -117,11 +117,53 @@ class CourseController extends Controller
                 ], 404);
             }
 
+            $formattedCourseContent = $course->courseContent->map(function ($content) {
+                return [
+                    'id' => $content->id,
+                    'name' => $content->name,
+                    'description' => $content->description,
+                    'description' => $content->description,
+                    'release_start' => $content->release_start,
+                    'release_end' => $content->release_end,
+                ];
+            });
+
+            $formattedMembers = $course->members->map(function ($member) {
+                return [
+                    'id' => $member->id,
+                    'student' => [
+                        'id' => $member->student->id,
+                        'username' => $member->student->username,
+                        'firstname' => $member->student->firstname,
+                        'lastname' => $member->student->lastname,
+                        'email' => $member->student->email,
+                    ],
+                ];
+            });
+    
+            $formattedTeacher = $course->teacher ? [
+                'id' => $course->teacher->id,
+                'username' => $course->teacher->username,
+                'firstname' => $course->teacher->firstname,
+                'lastname' => $course->teacher->lastname,
+                'email' => $course->teacher->email,
+            ] : null;
+
             return response()->json([
                 'status' => true,
                 'message' => 'Course fetched successfully',
                 'code' => 200,
-                'data' => $course
+                'data' => [
+                    'id' => $course->id,
+                    'name' => $course->name,
+                    'description' => $course->description,
+                    'price' => $course->price,
+                    'quota' => $course->quota,
+                    'image' => $course->image,
+                    'content' => $formattedCourseContent,
+                    'teacher' => $formattedTeacher,
+                    'members' => $formattedMembers,
+                ]
             ], 200);
         } catch (Exception $e) {
             return response()->json([
@@ -286,4 +328,41 @@ class CourseController extends Controller
             ], 500);
         }
     }
+
+    public function total()
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            if (!$loggedInUser->isTeacher()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized: Only teachers can access this data',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+
+            $courseCount = \Illuminate\Support\Facades\DB::table('courses')->where('teacher_id', $loggedInUser->id)->count();
+
+            return response()->json([
+                'status' => true,
+                'message' => $courseCount > 0 ? 'Course count fetched successfully' : 'No courses found for the current teacher',
+                'code' => 200,
+                'data' => [
+                    'course_count' => $courseCount
+                ]
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'code' => 500,
+                'data' => null
+            ], 500);
+        }
+    }
+
+
+
 }

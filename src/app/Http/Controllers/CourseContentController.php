@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Course;
 use App\Models\CourseContent;
 use Exception;
 use Illuminate\Http\Request;
@@ -72,10 +73,35 @@ class CourseContentController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(CourseContent $courseContent)
+    public function show(Course $course, CourseContent $content)
     {
-        //
+        // Pastikan content milik course
+        if ($content->course_id !== $course->id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Content does not belong to the specified course',
+                'code' => 403,
+                'data' => null
+            ], 403);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Course content fetched successfully',
+            'code' => 200,
+            'data' => [
+                'id' => $content->id,
+                'name' => $content->name,
+                'description' => $content->description,
+                'release_start' => $content->release_start,
+                'release_end' => $content->release_end,
+                'video_url' => $content->video_url, 
+                'file_attachment' => $content->file_attachment, 
+                'status' => $content->status == 1 ? "publish" : "unpublish", 
+            ]
+        ], 200);
     }
+
 
     /**
      * Show the form for editing the specified resource.
