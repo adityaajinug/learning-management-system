@@ -329,7 +329,7 @@ class CourseController extends Controller
         }
     }
 
-    public function total()
+    public function countCoursesByTeacher()
     {
         try {
             $loggedInUser = auth()->user();
@@ -363,6 +363,94 @@ class CourseController extends Controller
         }
     }
 
+    public function countMembersByTeacher()
+    {
+        try {
+            $loggedInUser = auth()->user();
 
+            if (!$loggedInUser->isTeacher()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized: Only teachers can access this data',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+
+            $courses = Course::where('teacher_id', $loggedInUser->id)->get();
+
+            $coursesWithMemberCount = $courses->map(function ($course) {
+                return [
+                    'course_id' => $course->id,
+                    'course_name' => $course->name,
+                    'member_count' => $course->members()->count(),
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Course member counts fetched successfully',
+                'code' => 200,
+                'data' => $coursesWithMemberCount
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'code' => 500,
+                'data' => null
+            ], 500);
+        }
+    }
+
+    public function countCommentsByTeacher()
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            if (!$loggedInUser->isTeacher()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized: Only teachers can access this data',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+
+            $courses = Course::where('teacher_id', $loggedInUser->id)->get();
+
+            $coursesWithCommentCount = $courses->map(function ($course) {
+                $courseContentsWithCommentCount = $course->courseContent->map(function ($content) {
+                    $commentCount = $content->comments()->count();
+
+                    return [
+                        'content_id' => $content->id,
+                        'content_name' => $content->name,
+                        'comment_count' => $commentCount, 
+                    ];
+                });
+
+                return [
+                    'course_id' => $course->id,
+                    'course_name' => $course->name,
+                    'content' => $courseContentsWithCommentCount,
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Course comment counts fetched successfully',
+                'code' => 200,
+                'data' => $coursesWithCommentCount
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'code' => 500,
+                'data' => null
+            ], 500);
+        }
+    }
 
 }

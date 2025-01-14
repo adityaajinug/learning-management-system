@@ -40,11 +40,13 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::controller(CourseController::class)->prefix('courses')->group(function () {
         Route::get('/my-course', 'index'); 
         Route::post('/store', 'store'); 
-        Route::get('/total', 'total'); 
+        Route::get('/total', 'countCoursesByTeacher'); 
         Route::get('{id}', 'show'); 
         Route::put('{course}', 'update'); 
         Route::delete('{course}', 'destroy');
         Route::post('{id}/enroll', 'enroll');
+        Route::get('members/count', 'countMembersByTeacher');
+        Route::get('comments/count', 'countCommentsByTeacher');
     });
 
     Route::controller(CourseContentController::class)->prefix('courses/{course}/content')->group(function () {
