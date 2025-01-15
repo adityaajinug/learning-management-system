@@ -671,6 +671,7 @@ class CourseController extends Controller
                 return response()->json([
                     'status' => false,
                     'message' => 'Unauthorized: Only students can enroll in courses',
+                    'code' => 403,
                     'data' => null
                 ], 403);
             }
@@ -701,6 +702,7 @@ class CourseController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Successfully enrolled in the course',
+                'code' => 200,
                 'data' => [
                     'course_id' => $course->id,
                     'course_name' => $course->name,
@@ -716,6 +718,7 @@ class CourseController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Enrollment failed: ' . $e->getMessage(),
+                'code' => 400,
                 'data' => null
             ], 400);
         }
@@ -731,12 +734,14 @@ class CourseController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Courses retrieved successfully',
+                'code' => 200,
                 'data' => $courses
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to retrieve courses: ' . $e->getMessage(),
+                'code' => 500,
                 'data' => null
             ], 500);
         }
