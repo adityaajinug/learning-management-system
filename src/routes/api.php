@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CourseCommentController;
 use App\Http\Controllers\CourseContentController;
 use App\Http\Controllers\CourseController;
 use Illuminate\Http\Request;
@@ -55,6 +56,11 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('courses/count', 'countCoursesByStudent');
         Route::get('comments/count', 'countCommentsByStudent');
         Route::post('courses/{id}/enroll', 'enrollByStudent'); 
+    });
+
+    Route::controller(CourseCommentController::class)->prefix('courses')->group(function () {
+        Route::post('{id}/content/{content_id}', 'store'); 
+        Route::put('{id}/content/{content_id}/comments/{comment_id}', 'updateCommentVisibility');
     });
 
     Route::controller(CourseContentController::class)->prefix('courses/{course}/content')->group(function () {
