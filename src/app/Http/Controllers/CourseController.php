@@ -10,6 +10,7 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\CourseCompletionTracking;
+use Illuminate\Support\Facades\Crypt;
 
 class CourseController extends Controller
 {
@@ -844,7 +845,7 @@ class CourseController extends Controller
 
            
             $certificateUrl = route('certificate.view', [
-                'username' => $loggedInUser->username,
+                'str' => Crypt::encryptString($loggedInUser->username),
                 'courseId' => $courseId,
             ]);
 
@@ -866,22 +867,32 @@ class CourseController extends Controller
         }
     }
 
-    public function viewCertificate($courseId)
+    public function viewCertificate($courseId, Request $request)
     {
-        $loggedInUser = auth()->user();
-
-        $courseMember = CourseMember::where('student_id', $loggedInUser->id)
+        $encryptedUsername = $request->query('str');
+        try {
+            $username = Crypt::decryptString($encryptedUsername);
+        } catch (\Exception $e) {
+            abort(403, 'Invalid or expired certificate URL.');
+        }
+        $user = User::where('username', $username)->first();
+    
+        if (!$user) {
+            abort(404, 'User not found');
+        }
+    
+        $courseMember = CourseMember::where('student_id', $user->id)
             ->where('course_id', $courseId)
             ->first();
-
+    
         if (!$courseMember) {
             abort(403, 'You are not authorized to view this certificate.');
         }
-
+    
         $course = Course::findOrFail($courseId);
-
+    
         return view('course-certificate', [
-            'user' => $loggedInUser,
+            'user' => $user,
             'course' => $course
         ]);
     }

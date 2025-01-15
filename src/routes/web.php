@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
-Route::middleware(['jwt.auth'])->group(function () {
-    Route::controller(CourseController::class)->prefix('courses')->group(function () {
-        Route::get('{courseId}/certificate', 'viewCertificate')->name('certificate.view');
-    });
+
+Route::controller(CourseController::class)->prefix('courses')->group(function () {
+    Route::get('{courseId}/certificate', 'viewCertificate')->name('certificate.view');
 });
+
