@@ -794,10 +794,96 @@ class CourseController extends Controller
         }
     }
 
+    public function generateCertificateUrl($courseId)
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            if (!$loggedInUser->isStudent()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Only students can access certificates',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+
+            $courseMember = CourseMember::where('student_id', $loggedInUser->id)
+                ->where('course_id', $courseId)
+                ->first();
+
+            if (!$courseMember) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You are not enrolled in this course',
+                    'code' => 400,
+                    'data' => null
+                ], 400);
+            }
+
+ 
+            $course = Course::with('courseContent')->findOrFail($courseId);
+            $totalContent = $course->courseContent->count();
+
+       
+            $completedContentCount = CourseCompletionTracking::where('member_id', $courseMember->id)
+                ->whereHas('content', function ($query) use ($courseId) {
+                    $query->where('course_id', $courseId);
+                })
+                ->count();
+
     
+            if ($totalContent === 0 || $completedContentCount < $totalContent) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You have not completed this course yet',
+                    'code' => 400,
+                    'data' => null
+                ], 400);
+            }
 
+           
+            $certificateUrl = route('certificate.view', [
+                'username' => $loggedInUser->username,
+                'courseId' => $courseId,
+            ]);
 
+            return response()->json([
+                'status' => true,
+                'message' => 'Certificate generated successfully',
+                'code' => 200,
+                'data' => [
+                    'certificate_url' => $certificateUrl
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'code' => 500,
+                'data' => null
+            ], 500);
+        }
+    }
 
+    public function viewCertificate($courseId)
+    {
+        $loggedInUser = auth()->user();
 
+        $courseMember = CourseMember::where('student_id', $loggedInUser->id)
+            ->where('course_id', $courseId)
+            ->first();
+
+        if (!$courseMember) {
+            abort(403, 'You are not authorized to view this certificate.');
+        }
+
+        $course = Course::findOrFail($courseId);
+
+        return view('course-certificate', [
+            'user' => $loggedInUser,
+            'course' => $course
+        ]);
+    }
 
 }
