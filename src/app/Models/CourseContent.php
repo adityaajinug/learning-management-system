@@ -29,5 +29,10 @@ class CourseContent extends Model
     {
         return $this->hasMany(CourseComment::class, 'content_id');
     }
+
+    public function completionTrackings()
+    {
+        return $this->hasMany(CourseCompletionTracking::class, 'content_id');
+    }
   
 }

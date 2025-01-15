@@ -15,12 +15,12 @@ return new class extends Migration
             $table->id();
             $table->integer('status')->nullable();
             $table->text('description')->nullable();
-            $table->unsignedBigInteger('course_content_id');
+            $table->unsignedBigInteger('content_id');
             $table->unsignedBigInteger('member_id');
             $table->timestamps();
 
             $table->foreign('member_id')->references('id')->on('course_members')->onDelete('cascade');
-            $table->foreign('course_content_id')->references('id')->on('course_contents')->onDelete('cascade');
+            $table->foreign('content_id')->references('id')->on('course_contents')->onDelete('cascade');
         });
     }
 

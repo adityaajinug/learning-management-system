@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CourseCommentController;
+use App\Http\Controllers\CourseCompletionTrackingController;
 use App\Http\Controllers\CourseContentController;
 use App\Http\Controllers\CourseController;
 use Illuminate\Http\Request;
@@ -56,6 +57,7 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('courses/count', 'countCoursesByStudent');
         Route::get('comments/count', 'countCommentsByStudent');
         Route::post('courses/{id}/enroll', 'enrollByStudent'); 
+        Route::get('completion/count', 'countAllCourseCompletions');
     });
 
     Route::controller(CourseCommentController::class)->prefix('courses')->group(function () {
@@ -66,6 +68,12 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::controller(CourseContentController::class)->prefix('courses/{course}/content')->group(function () {
         Route::post('/', 'store');
         Route::get('{content}', 'show'); 
+    });
+
+    Route::controller(CourseCompletionTrackingController::class)->prefix('completion/courses')->group(function () {
+        Route::post('{courseId}/content/{contentId}', 'store');
+        Route::delete('{courseId}/content/{contentId}/tracking/{trackingId}', 'destroy');
+        Route::get('{courseId}', 'show');
     });
 });
 

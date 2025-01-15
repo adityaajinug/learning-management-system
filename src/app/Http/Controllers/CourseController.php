@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Models\CourseCompletionTracking;
 
 class CourseController extends Controller
 {
@@ -739,6 +740,60 @@ class CourseController extends Controller
             ], 500);
         }
     }
+
+    public function countAllCourseCompletions()
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            if (!$loggedInUser->isStudent()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Only students can view completion status',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+
+           
+            $courseMembers = CourseMember::where('student_id', $loggedInUser->id)
+                ->with('course.courseContent')
+                ->get();
+
+            $courseCompletionData = $courseMembers->map(function ($courseMember) {
+                $course = $courseMember->course;
+
+                $totalContent = $course->courseContent()->count();
+
+                $completedContentCount = CourseCompletionTracking::where('member_id', $courseMember->id)
+                    ->whereHas('content', function ($query) use ($course) {
+                        $query->where('course_id', $course->id);
+                    })
+                    ->count();
+
+                return [
+                    'course_name' => $course->name,
+                    'total_content' => $totalContent,
+                    'completed_content_count' => $completedContentCount,
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'All course completion data fetched successfully',
+                'code' => 200,
+                'data' => $courseCompletionData
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'code' => 500,
+                'data' => null
+            ], 500);
+        }
+    }
+
     
 
 
