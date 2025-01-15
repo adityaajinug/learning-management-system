@@ -58,7 +58,7 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('comments/count', 'countCommentsByStudent');
         Route::post('courses/{id}/enroll', 'enrollByStudent'); 
         Route::get('completion/count', 'countAllCourseCompletions');
-        Route::get('courses/{courseId}', 'generateCertificateUrl');
+        Route::get('certificate/courses/{courseId}', 'generateCertificateUrl');
     });
 
     Route::controller(CourseCommentController::class)->prefix('courses')->group(function () {
