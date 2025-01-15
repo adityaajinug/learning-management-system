@@ -44,19 +44,26 @@ Route::middleware(['jwt.auth'])->group(function () {
         Route::get('{id}', 'show'); 
         Route::put('{course}', 'update'); 
         Route::delete('{course}', 'destroy');
-        Route::post('{id}/enroll', 'enroll');
+        Route::post('{id}/enroll', 'enrollBatch'); 
         Route::get('members/count', 'countMembersByTeacher');
         Route::get('comments/count', 'countCommentsByTeacher');
+        Route::get('content/count', 'countCourseContentByTeacher');
     });
 
     Route::controller(CourseController::class)->prefix('student')->group(function () {
         Route::get('my-courses', 'getCoursesByStudent'); 
         Route::get('courses/count', 'countCoursesByStudent');
         Route::get('comments/count', 'countCommentsByStudent');
+        Route::post('courses/{id}/enroll', 'enrollByStudent'); 
     });
 
     Route::controller(CourseContentController::class)->prefix('courses/{course}/content')->group(function () {
         Route::post('/', 'store');
         Route::get('{content}', 'show'); 
     });
+});
+
+Route::controller(CourseController::class)->prefix('global')->group(function () {
+    Route::get('courses', 'allCourses');
+    
 });

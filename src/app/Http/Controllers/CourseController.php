@@ -248,13 +248,12 @@ class CourseController extends Controller
         }
     }
 
-    public function enroll(Request $request, $courseId)
+    public function enrollBatch(Request $request, $courseId)
     {
         try {
-            $course = Course::findOrFail($courseId); 
-            $studentIds = $request->input('student_ids', []); 
-
-     
+            $course = Course::findOrFail($courseId);
+            $studentIds = $request->input('student_ids', []);
+    
             if (empty($studentIds) || !is_array($studentIds)) {
                 return response()->json([
                     'status' => false,
@@ -262,13 +261,11 @@ class CourseController extends Controller
                     'data' => null
                 ], 400);
             }
-
+    
             $students = User::whereIn('id', $studentIds)
-            ->where('roles', User::ROLE_STUDENT)
-            ->get();
-
-            $students = User::whereIn('id', $studentIds)->where('roles', User::ROLE_STUDENT)->get();
-            
+                ->where('roles', User::ROLE_STUDENT)
+                ->get();
+    
             if ($students->isEmpty()) {
                 return response()->json([
                     'status' => false,
@@ -276,39 +273,56 @@ class CourseController extends Controller
                     'data' => null
                 ], 400);
             }
-
+    
             $enrolledStudents = [];
             $skippedStudents = [];
-
-            foreach ($students as $student) {
-                $alreadyEnrolled = CourseMember::where('student_id', $student->id)
-                    ->where('course_id', $course->id)
-                    ->exists();
     
-                if (!$alreadyEnrolled) {
-                    CourseMember::create([
-                        'student_id' => $student->id,
-                        'course_id' => $course->id
-                    ]);
+            DB::transaction(function () use ($course, $students, &$enrolledStudents, &$skippedStudents) {
+                $availableQuota = $course->quota;
     
-                    $enrolledStudents[] = [
-                        'id' => $student->id,
-                        'firstname' => $student->firstname,
-                        'lastname' => $student->lastname,
-                        'email' => $student->email,
-                        'course_id' => $course->id
-                    ];
-                } else {
-                    $skippedStudents[] = [
-                        'id' => $student->id,
-                        'firstname' => $student->firstname,
-                        'lastname' => $student->lastname,
-                        'email' => $student->email,
-                        'course_id' => $course->id,
-                        'message' => 'Student already enrolled in this course'
-                    ];
+                foreach ($students as $student) {
+                    if ($availableQuota <= 0) {
+                        $skippedStudents[] = [
+                            'id' => $student->id,
+                            'firstname' => $student->firstname,
+                            'lastname' => $student->lastname,
+                            'email' => $student->email,
+                            'message' => 'Course quota is full'
+                        ];
+                        continue;
+                    }
+    
+                    $alreadyEnrolled = CourseMember::where('student_id', $student->id)
+                        ->where('course_id', $course->id)
+                        ->exists();
+    
+                    if (!$alreadyEnrolled) {
+                        CourseMember::create([
+                            'student_id' => $student->id,
+                            'course_id' => $course->id
+                        ]);
+    
+                        $enrolledStudents[] = [
+                            'id' => $student->id,
+                            'firstname' => $student->firstname,
+                            'lastname' => $student->lastname,
+                            'email' => $student->email,
+                            'course_id' => $course->id
+                        ];
+    
+                        $course->decrement('quota');
+                        $availableQuota--;
+                    } else {
+                        $skippedStudents[] = [
+                            'id' => $student->id,
+                            'firstname' => $student->firstname,
+                            'lastname' => $student->lastname,
+                            'email' => $student->email,
+                            'message' => 'Student already enrolled in this course'
+                        ];
+                    }
                 }
-            }
+            });
     
             return response()->json([
                 'status' => true,
@@ -316,19 +330,18 @@ class CourseController extends Controller
                 'data' => [
                     'enrolled' => $enrolledStudents,
                     'skipped' => $skippedStudents
-                ],
-                'code' => 200
+                ]
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'Enrollment failed: ' . $e->getMessage(),
-                'data' => null,
-                'code' => 500
+                'data' => null
             ], 500);
         }
     }
+    
+
 
     public function countCoursesByTeacher()
     {
@@ -454,6 +467,49 @@ class CourseController extends Controller
         }
     }
 
+    public function countCourseContentByTeacher()
+    {
+        try {
+            $loggedInUser = auth()->user();
+
+            if (!$loggedInUser->isTeacher()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized: Only teachers can access this data',
+                    'code' => 403,
+                    'data' => null
+                ], 403);
+            }
+
+            $courses = Course::where('teacher_id', $loggedInUser->id)->get();
+
+            $coursesWithContentCount = $courses->map(function ($course) {
+                $contentCount = $course->courseContent()->count();
+
+                return [
+                    'course_id' => $course->id,
+                    'course_name' => $course->name,
+                    'content_count' => $contentCount
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Course content counts fetched successfully',
+                'code' => 200,
+                'data' => $coursesWithContentCount
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'code' => 500,
+                'data' => null
+            ], 500);
+        }
+    }
+
+
     public function getCoursesByStudent()
     {
         try {
@@ -480,6 +536,7 @@ class CourseController extends Controller
                     ->where('course_id', $course->id)
                     ->where('release_start', '<=', now()) 
                     ->where('release_end', '>=', now()) 
+                    ->where('status', 1)
                     ->get();
 
                 $course->teacher = DB::table('users')
@@ -602,6 +659,89 @@ class CourseController extends Controller
             ], 500);
         }
     }
+
+    public function enrollByStudent(Request $request, $courseId)
+    {
+        try {
+            $loggedInUser = auth()->user();
+    
+            if (!$loggedInUser->isStudent()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized: Only students can enroll in courses',
+                    'data' => null
+                ], 403);
+            }
+    
+            $course = Course::findOrFail($courseId);
+    
+            DB::transaction(function () use ($loggedInUser, $course) {
+                if ($course->quota <= 0) {
+                    throw new \Exception('Course quota is full');
+                }
+    
+                $alreadyEnrolled = CourseMember::where('student_id', $loggedInUser->id)
+                    ->where('course_id', $course->id)
+                    ->exists();
+    
+                if ($alreadyEnrolled) {
+                    throw new \Exception('You are already enrolled in this course');
+                }
+    
+                CourseMember::create([
+                    'student_id' => $loggedInUser->id,
+                    'course_id' => $course->id
+                ]);
+    
+                $course->decrement('quota');
+            });
+    
+            return response()->json([
+                'status' => true,
+                'message' => 'Successfully enrolled in the course',
+                'data' => [
+                    'course_id' => $course->id,
+                    'course_name' => $course->name,
+                    'student' => [
+                        'id' => $loggedInUser->id,
+                        'firstname' => $loggedInUser->firstname,
+                        'lastname' => $loggedInUser->lastname,
+                        'email' => $loggedInUser->email
+                    ]
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Enrollment failed: ' . $e->getMessage(),
+                'data' => null
+            ], 400);
+        }
+    }
+
+    public function allCourses(Request $request)
+    {
+        try {
+            $perPage = $request->input('per_page', 4);
+
+            $courses = Course::paginate($perPage);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Courses retrieved successfully',
+                'data' => $courses
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to retrieve courses: ' . $e->getMessage(),
+                'data' => null
+            ], 500);
+        }
+    }
+    
+
+
 
 
 
