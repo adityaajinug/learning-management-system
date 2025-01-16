@@ -22,7 +22,7 @@ class CourseContent extends Model
 
     public function course()
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'id', 'course_id');
     }
 
     public function comments()
